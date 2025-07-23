@@ -1,0 +1,37 @@
+name: update
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  automation:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+      - run: |
+          nix flake update
+          nix run .#update-versions
+          nix run .#update-templates
+          nix run .#test-all
+          nix run .#readme > README.md
+      - uses: test-room-7/action-update-file@v2.0.0
+        with:
+          branch: ${{ github.head_ref || github.ref_name }}
+          file-path: |
+            flake.lock
+            src/zig/versions.nix
+            templates/**
+            README.md
+          commit-msg: Automatic update
+          github-token: ${{ secrets.GITHUB_TOKEN }}
