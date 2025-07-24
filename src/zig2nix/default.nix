@@ -21,6 +21,7 @@ stdenvNoCC.mkDerivation {
   meta.mainProgram = "zig2nix";
   postFixup = ''
     wrapProgram $out/bin/zig2nix --prefix PATH : ${lib.makeBinPath [
+      zig
       git
       nix
       nixfmt-rfc-style

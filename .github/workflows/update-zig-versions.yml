@@ -28,8 +28,15 @@ jobs:
       - run: |
           nix run .#update-versions
           nix run .#update-templates
-          nix run .#test-all
+        name: Update versions and templates
+# If you do want to run tests, consider using automation.yml
+# This is intended to allow self-hosted runners to update versions without a full VM.
+#      - run: |
+#          nix run .#test-all
+#        name: Run tests
+      - run: |
           nix run .#readme > README.md
+        name: Generate README
       - uses: test-room-7/action-update-file@v2.0.0
         with:
           branch: ${{ github.head_ref || github.ref_name }}
