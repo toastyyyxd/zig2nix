@@ -1,0 +1,42 @@
+name: update-zig-versions
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  update-zig-versions:
+    runs-on: self-hosted
+    container:
+      image: nixos/nix:latest
+
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - run: |
+          echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+          echo "sandbox = false" >> /etc/nix/nix.conf
+          nix-env -iA \
+            nixpkgs.git \
+            nixpkgs.nodejs_20 \
+            nixpkgs.busybox
+        name: Setup Nix and dependencies
+      - uses: actions/checkout@v4
+      - run: |
+          nix run .#update-versions
+          nix run .#update-templates
+          nix run .#test-all
+          nix run .#readme > README.md
+      - uses: test-room-7/action-update-file@v2.0.0
+        with:
+          branch: ${{ github.head_ref || github.ref_name }}
+          file-path: |
+            flake.lock
+            src/zig/versions.nix
+            templates/**
+            README.md
+          commit-msg: Automatic update
+          github-token: ${{ secrets.GITHUB_TOKEN }}

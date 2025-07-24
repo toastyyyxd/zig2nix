@@ -59,15 +59,19 @@ in if release ? ${system} then stdenvNoCC.mkDerivation (finalAttrs: {
     inherit (release.${system}) size;
     hook = callPackage zigHook {
       zig = if (stdenvNoCC.isLinux) then
-        # Wrap binary package zig on linux so /usr/bin/env can be found inside a sandbox
+        # Only use bubblewrap if user namespaces are available, for non-github-hosted actions.
         writeScriptBin "zig" ''
-          args=()
-          for d in /*; do
-            args+=("--dev-bind" "$d" "$d")
-          done
-          ${bubblewrap}/bin/bwrap "''${args[@]}" \
-            --bind ${coreutils} /usr \
-            -- ${finalAttrs.finalPackage}/bin/zig "$@"
+          if [ -e /proc/sys/kernel/unprivileged_userns_clone ] && [ "$(cat /proc/sys/kernel/unprivileged_userns_clone)" = "1" ]; then
+            args=()
+            for d in /*; do
+              args+=("--dev-bind" "$d" "$d")
+            done
+            ${bubblewrap}/bin/bwrap "''${args[@]}" \
+              --bind ${coreutils} /usr \
+              -- ${finalAttrs.finalPackage}/bin/zig "$@"
+          else
+            exec ${finalAttrs.finalPackage}/bin/zig "$@"
+          fi
         ''
       else finalAttrs.finalPackage;
     };

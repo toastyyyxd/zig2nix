@@ -197,6 +197,9 @@
         bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
       };
 
+      # For utility output on "stable" zig versions.
+      build-env = zig-env { zig = zigv.latest; };
+      # For tests on nightlies!
       test-env = zig-env { zig = zigv.master; };
       test-app = test-env.app-bare;
 
@@ -233,7 +236,7 @@
         zon2nix = flake-outputs.apps.zon2nix-latest;
 
         # nix run .#update-versions
-        update-versions = with test-env.pkgs; test-app [ curl test-env.zig2nix ] ''
+        update-versions = with build-env.pkgs; test-app [ curl build-env.zig2nix ] ''
           tmp="$(mktemp)"
           trap 'rm -f "$tmp"' EXIT
           # use curl because zig's std.net is flaky
@@ -242,7 +245,7 @@
         '';
 
         # nix run .#update-templates
-        update-templates = with test-env.pkgs; test-app [ coreutils gnused ] ''
+        update-templates = with build-env.pkgs; test-app [ coreutils gnused ] ''
           rm -rf templates/default
           mkdir -p templates/default
           sed 's#/[*]SED_ZIG_VER[*]/##' templates/flake.nix > templates/default/flake.nix
@@ -268,7 +271,7 @@
         # nix run .#readme
         readme = let
           project = "zig2nix flake";
-        in with test-env.pkgs; test-app [ gawk gnused ] (replaceStrings ["`"] ["\\`"] ''
+        in with build-env.pkgs; test-app [ gawk gnused ] (replaceStrings ["`"] ["\\`"] ''
         cat <<EOF
         # ${project}
 
@@ -383,6 +386,14 @@
       #! example: nix develop .#default
       devShells = flake-outputs.devShells // {
         default = flake-outputs.devShells.latest;
+        latest = flake-outputs.devShells.latest;
+        master = flake-outputs.devShells.master;
+        with-actions = test-env.pkgs.mkShell {
+          packages = [ test-env.pkgs.act ] ++ (flake-outputs.devShells.latest.packages or []);
+        };
+        with-actions-master = test-env.pkgs.mkShell {
+          packages = [ test-env.pkgs.act ] ++ (flake-outputs.devShells.master.packages or []);
+        };
       };
     }));
 
