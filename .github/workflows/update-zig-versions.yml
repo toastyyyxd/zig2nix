@@ -24,6 +24,7 @@ jobs:
             nixpkgs.nodejs_20 \
             nixpkgs.busybox
         name: Setup Nix and dependencies
+      - uses: actions/setup-node@v3.9.1
       - uses: actions/checkout@v4
       - run: |
           nix run .#update-versions
