@@ -7,7 +7,7 @@ on:
 
 jobs:
   update-zig-versions:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     container:
       image: nixos/nix:latest
 
