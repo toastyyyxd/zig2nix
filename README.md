@@ -10,7 +10,7 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig master: `0.15.0-dev.936+fc2c1883b @ 2025-07-08`
+* Zig master: `0.15.0-dev.1218+bc8e1a74c @ 2025-07-23`
 * Zig latest: `0.14.1 @ 2025-05-21`
 
 ## Examples
@@ -228,8 +228,9 @@ mkShell = pkgs.callPackage ({
 package = zigPackage;
 
 #! Bundle a package into a zip
-bundle.zip = pkgs.callPackage ./src/bundle/zip.nix { inherit zigPackage; };
-
+bundle.zip = pkgs.callPackage ./src/bundle/zip.nix {
+ zigPackage = (zig-env { zig = zigv.latest; }).package;
+};
 
 #! Bundle a package for running in AWS lambda
 bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
@@ -252,7 +253,31 @@ packages = mapAttrs' (k: v: nameValuePair ("zig-" + k) v) zigv;
 #! example: nix develop .#default
 devShells = flake-outputs.devShells // {
  default = flake-outputs.devShells.latest;
+ latest = flake-outputs.devShells.latest;
+ master = flake-outputs.devShells.master;
+ with-actions = build-env.pkgs.mkShell {
+  packages = [ build-env.pkgs.act ] ++ (flake-outputs.devShells.latest.packages or []);
+ };
+ with-actions-master = test-env.pkgs.mkShell {
+  packages = [ test-env.pkgs.act ] ++ (flake-outputs.devShells.master.packages or []);
+ };
 };
+}));
+
+welcome-template = description: ''
+ # ${description}
+ - Zig: https://ziglang.org/
+ 
+ ## Build & Run
+ 
+ ---
+ nix run .
+ ---
+ 
+ See flake.nix for more options.
+'';
+
+in outputs // {
 
 #! --- Generic flake outputs.
 #!     access: `zig2nix.outputs.thing`
