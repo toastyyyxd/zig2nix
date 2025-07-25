@@ -6,43 +6,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  update-zig-versions:
+  automation:
     runs-on: ubuntu-latest
-    container:
-      image: nixos/nix:latest
 
     permissions:
       id-token: write
       contents: write
 
     steps:
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - run: |
-          echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
-          echo "sandbox = false" >> /etc/nix/nix.conf
-          nix-env -iA \
-            nixpkgs.git \
-            nixpkgs.busybox
-        name: Setup Nix and dependencies
-      - run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}
-          git checkout "${GITHUB_REF_NAME:-main}"
-        name: Setup Git
-      - run: |
+          nix flake update
           nix run .#update-versions
           nix run .#update-templates
-        name: Update versions and templates
-# If you do want to run tests, consider using automation.yml
-# This is intended to allow self-hosted runners to update versions without a full VM.
-#      - run: |
-#          nix run .#test-all
-#        name: Run tests
-      - run: |
+          nix run .#test-all
           nix run .#readme > README.md
-        name: Generate README
-      - run: |
-          git add flake.lock src/zig/versions.nix templates/ README.md
-          git commit -m "Automatic update" || echo "No changes to commit"
-          git push origin "${GITHUB_REF_NAME}"
-        name: Commit and Push Changes
+      - uses: test-room-7/action-update-file@v2.0.0
+        with:
+          branch: ${{ github.head_ref || github.ref_name }}
+          file-path: |
+            flake.lock
+            src/zig/versions.nix
+            templates/**
+            README.md
+          commit-msg: Automatic update
+          github-token: ${{ secrets.GITHUB_TOKEN }}
