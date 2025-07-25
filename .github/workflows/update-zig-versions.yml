@@ -21,11 +21,15 @@ jobs:
           echo "sandbox = false" >> /etc/nix/nix.conf
           nix-env -iA \
             nixpkgs.git \
-            nixpkgs.nodejs_20 \
             nixpkgs.busybox
         name: Setup Nix and dependencies
-      - uses: actions/setup-node@v3.9.1
-      - uses: actions/checkout@v4
+      - run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}
+          git checkout "${GITHUB_REF_NAME:-main}"
+  name: Manual Checkout
+        name: Setup Git
       - run: |
           nix run .#update-versions
           nix run .#update-templates
@@ -38,13 +42,8 @@ jobs:
       - run: |
           nix run .#readme > README.md
         name: Generate README
-      - uses: test-room-7/action-update-file@v2.0.0
-        with:
-          branch: ${{ github.head_ref || github.ref_name }}
-          file-path: |
-            flake.lock
-            src/zig/versions.nix
-            templates/**
-            README.md
-          commit-msg: Automatic update
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          git add flake.lock src/zig/versions.nix templates/ README.md
+          git commit -m "Automatic update" || echo "No changes to commit"
+          git push origin "${GITHUB_REF_NAME}"
+        name: Commit and Push Changes
